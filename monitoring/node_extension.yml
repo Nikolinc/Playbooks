@@ -1,0 +1,51 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install Node Exporter
+      ansible.builtin.get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz
+        dest: /tmp/node_exporter.tar.gz
+
+    - name: Extract Node Exporter
+      ansible.builtin.unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /usr/local/bin/
+        remote_src: yes
+
+    - name: Move node_exporter binary to /usr/local/bin
+      ansible.builtin.command: mv /usr/local/bin/node_exporter-1.3.1.linux-amd64/node_exporter /usr/local/bin/node_exporter
+
+    - name: Create Node Exporter service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=nobody
+          ExecStart=/usr/local/bin/node_exporter
+
+          [Install]
+          WantedBy=default.target
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Start Node Exporter service
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+
+    - name: Open firewall port 9100 (if firewall is running)
+      ansible.builtin.firewalld:
+        port: 9100/tcp
+        permanent: yes
+        immediate: yes
+        state: enabled
+        zone: public
+      ignore_errors: true
