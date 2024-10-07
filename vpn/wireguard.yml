@@ -1,0 +1,41 @@
+---
+- name: Configure WireGuard server and client
+  hosts: wireguard-server
+  become: true
+  vars:
+    wg_server_private_key: "<ServerPrivateKey>" # Приватный ключ сервера
+    wg_server_public_ip: "172.24.4.33"          # Публичный IP сервера
+    wg_server_listen_port: 51820                # Порт сервера
+    wg_client_allowed_ips: "10.0.0.2/32"        # IP клиента
+    wg_private_interface: "eth0"                # Интерфейс для NAT
+
+  tasks:
+    - name: Install WireGuard
+      apt:
+        name: wireguard
+        state: present
+
+    - name: Ensure iptables is installed
+      apt:
+        name: iptables
+        state: present
+
+    - name: Configure WireGuard server
+      template:
+        src: wireguard-server.j2
+        dest: /etc/wireguard/wg0.conf
+        mode: 0600
+      notify:
+        - Restart WireGuard
+
+    - name: Enable and start WireGuard service
+      systemd:
+        name: wg-quick@wg0
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Restart WireGuard
+      systemd:
+        name: wg-quick@wg0
+        state: restarted

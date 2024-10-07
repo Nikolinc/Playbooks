@@ -1,0 +1,14 @@
+[Interface]
+PrivateKey = {{ wg_server_private_key }}
+Address = 10.0.0.1/26
+ListenPort = {{ wg_server_listen_port }}
+SaveConfig = true
+
+# Настройка роутинга
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ wg_private_interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ wg_private_interface }} -j
+MASQUERADE
+
+[Peer]
+PublicKey = {{ lookup('env', 'CLIENT_PUBLIC_KEY') }} # Публичный ключ клиента передается через env
+AllowedIPs = {{ wg_client_allowed_ips }}
